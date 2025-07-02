@@ -15,7 +15,7 @@ bool tayaChanged = false;
 
 struct Player {
     string name;
-    int score = 0;  // Score counts number of times the player became the Taya
+    int score = 0;  // number of times the player became Taya
 };
 
 void playerAction(int pid, vector<Player>& players) {
@@ -95,10 +95,12 @@ void displayScoresAndWinners(const vector<Player>& players) {
 }
 
 void loginPlayers(vector<Player>& players) {
-    cout << "Welcome to Tumbang Preso Digital Edition\n";
+    cout << "------------------------------\n";
+    cout << " Welcome to Tumbang Preso 2.0\n";
+    cout << "------------------------------\n";
     for (int i = 0; i < 3; ++i) {
         Player p;
-        cout << "Player " << i + 1 << ", enter your name: ";
+        cout << "Enter Player " << i + 1 << " Name: ";
         cin >> p.name;
         players.push_back(p);
     }
