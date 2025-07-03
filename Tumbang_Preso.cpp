@@ -12,37 +12,59 @@ using namespace std;
 mutex mtx;
 int currentTaya = -1;
 bool tayaChanged = false;
+int newTaya = -1;
 
 struct Player {
     string name;
     int score = 0;  // number of times the player became Taya
 };
 
+vector<string> moves(3);
+
 void playerAction(int pid, vector<Player>& players) {
     if (pid == currentTaya) return;
 
     string move;
+    {
+        lock_guard<mutex> lock(mtx);
+        cout << players[pid].name << ", choose your move (run/hide): ";
+        cin >> move;
+    }
 
-    mtx.lock();
-    cout << players[pid].name << ", choose your move (run/hide): ";
-    cin >> move;
-    mtx.unlock();
+    if (move != "run" && move != "hide") {
+        cout << "Invalid input. Defaulting to hide.\n";
+        move = "hide";
+    }
+
+    {
+        lock_guard<mutex> lock(mtx);
+        moves[pid] = move;
+    }
+}
+
+void tayaAction(vector<Player>& players) {
+    vector<int> candidates;
+    for (int i = 0; i < players.size(); ++i) {
+        if (i != currentTaya) candidates.push_back(i);
+    }
+
+    // Shuffle candidates for randomness
+    random_shuffle(candidates.begin(), candidates.end());
+
+    for (int pid : candidates) {
+        int chance = rand() % 2; // 50% chance to tag
+        if (chance == 1) {
+            lock_guard<mutex> lock(mtx);
+            cout << players[pid].name << " was caught by " << players[currentTaya].name << " while trying to " << moves[pid] << "!\n";
+            cout << players[pid].name << " is now the new Taya.\n";
+            newTaya = pid;
+            tayaChanged = true;
+            return;
+        }
+    }
 
     lock_guard<mutex> lock(mtx);
-    if (move == "run") {
-        if (rand() % 2 == 0) {
-            cout << players[pid].name << " was caught running! They become the new Taya.\n";
-            currentTaya = pid;
-            tayaChanged = true;
-        } else {
-            cout << players[pid].name << " ran safely!\n";
-        }
-    } else if (move == "hide") {
-        cout << players[pid].name << " hid successfully.\n";
-    } else {
-        cout << "Invalid input. Defaulting to hide.\n";
-        cout << players[pid].name << " hid successfully.\n";
-    }
+    cout << players[currentTaya].name << " failed to tag anyone this round.\n";
 }
 
 void playGame(vector<Player>& players) {
@@ -55,6 +77,8 @@ void playGame(vector<Player>& players) {
         cout << players[currentTaya].name << " is the Taya this round.\n";
 
         tayaChanged = false;
+        newTaya = -1;
+        moves = vector<string>(players.size(), "");
 
         vector<thread> threads;
         for (int i = 0; i < players.size(); ++i) {
@@ -64,14 +88,17 @@ void playGame(vector<Player>& players) {
         for (auto& t : threads)
             t.join();
 
-        if (tayaChanged) {
-            players[currentTaya].score++; // New Taya gains a point
+        tayaAction(players);
+
+        if (tayaChanged && newTaya != -1) {
+            currentTaya = newTaya;
+            players[currentTaya].score++;
         }
 
         cout << "End of Round " << round << ".\n";
         
         if (round < 3){
-        cout << "Taya for next round will be: " << players[currentTaya].name << "\n";
+            cout << "Taya for next round will be: " << players[currentTaya].name << "\n";
         }
     }
 
