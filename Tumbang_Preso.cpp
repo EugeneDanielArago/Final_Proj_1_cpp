@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <algorithm>
+#include <random> 
 
 using namespace std;
 
@@ -16,10 +17,10 @@ int newTaya = -1;
 
 struct Player {
     string name;
-    int score = 0;  // number of times the player became Taya
+    int score = 0;  // Number of times the player became Taya
 };
 
-vector<string> moves(3);
+vector<string> moves(3); 
 
 void playerAction(int pid, vector<Player>& players) {
     if (pid == currentTaya) return;
@@ -32,6 +33,7 @@ void playerAction(int pid, vector<Player>& players) {
     }
 
     if (move != "run" && move != "hide") {
+        lock_guard<mutex> lock(mtx);
         cout << "Invalid input. Defaulting to hide.\n";
         move = "hide";
     }
@@ -48,15 +50,17 @@ void tayaAction(vector<Player>& players) {
         if (i != currentTaya) candidates.push_back(i);
     }
 
-    // Shuffle candidates for randomness
-    random_shuffle(candidates.begin(), candidates.end());
+     // Shuffle candidates for randomness
+    random_device rd;
+    mt19937 g(rd());
+    shuffle(candidates.begin(), candidates.end(), g);
 
     for (int pid : candidates) {
         int chance = rand() % 2; // 50% chance to tag
         if (chance == 1) {
             lock_guard<mutex> lock(mtx);
-            cout << players[pid].name << " was caught by " << players[currentTaya].name << " while trying to " << moves[pid] << "!\n";
-            cout << players[pid].name << " is now the new Taya.\n";
+            cout << players[pid].name << " was caught by " << players[currentTaya].name
+                 << " while trying to " << moves[pid] << "!\n";
             newTaya = pid;
             tayaChanged = true;
             return;
@@ -97,7 +101,7 @@ void playGame(vector<Player>& players) {
 
         cout << "End of Round " << round << ".\n";
         
-        if (round < 3){
+        if (round < 3) {
             cout << "Taya for next round will be: " << players[currentTaya].name << "\n";
         }
     }
